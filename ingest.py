@@ -69,26 +69,33 @@ def load_documents(source_dir: str) -> List[Document]:
 
 
 def main():
-    # Load environment variables
-    persist_directory = os.environ.get('PERSIST_DIRECTORY')
-    source_directory = os.environ.get('SOURCE_DIRECTORY', 'source_documents')
-    embeddings_model_name = os.environ.get('EMBEDDINGS_MODEL_NAME')
+    # Load environment variables
+    persist_directory = os.environ.get("PERSIST_DIRECTORY")
+    source_directory = os.environ.get("SOURCE_DIRECTORY", "source_documents")
+    embeddings_model_name = os.environ.get("EMBEDDINGS_MODEL_NAME")
 
-    # Load documents and split in chunks
+    # Load documents and split in chunks
     print(f"Loading documents from {source_directory}")
-    chunk_size = 500
-    chunk_overlap = 50
+    chunk_size = 600
+    chunk_overlap = 80
     documents = load_documents(source_directory)
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_overlap
+    )
     texts = text_splitter.split_documents(documents)
     print(f"Loaded {len(documents)} documents from {source_directory}")
     print(f"Split into {len(texts)} chunks of text (max. {chunk_size} characters each)")
 
     # Create embeddings
     embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
-    
+
     # Create and store locally vectorstore
-    db = Chroma.from_documents(texts, embeddings, persist_directory=persist_directory, client_settings=CHROMA_SETTINGS)
+    db = Chroma.from_documents(
+        texts,
+        embeddings,
+        persist_directory=persist_directory,
+        client_settings=CHROMA_SETTINGS,
+    )
     db.persist()
     db = None
 
