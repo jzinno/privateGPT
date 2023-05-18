@@ -47,9 +47,6 @@ LOADER_MAPPING = {
 }
 
 
-load_dotenv()
-
-
 def load_single_document(file_path: str) -> Document:
     print(f"Loading document from {file_path}")
     ext = "." + file_path.rsplit(".", 1)[-1]
@@ -68,7 +65,13 @@ def load_documents(source_dir: str) -> List[Document]:
         all_files.extend(
             glob.glob(os.path.join(source_dir, f"**/*{ext}"), recursive=True)
         )
-    with multiprocessing.Pool(int(os.environ.get('LOAD_DOCUMENTS_NUMBER_OF_THREADS', multiprocessing.cpu_count() - 1))) as pool:
+    with multiprocessing.Pool(
+        int(
+            os.environ.get(
+                "LOAD_DOCUMENTS_NUMBER_OF_THREADS", multiprocessing.cpu_count() - 1
+            )
+        )
+    ) as pool:
         result = pool.map(load_single_document, all_files)
     return result
 
