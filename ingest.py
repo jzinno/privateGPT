@@ -43,6 +43,8 @@ LOADER_MAPPING = {
     # Add more mappings for other file extensions and loaders as needed
 }
 
+load_dotenv()
+
 
 def load_single_document(file_path: str) -> Document:
     print(f"Loading document from {file_path}")
