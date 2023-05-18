@@ -76,8 +76,8 @@ def main():
 
     # Load documents and split in chunks
     print(f"Loading documents from {source_directory}")
-    chunk_size = 600
-    chunk_overlap = 80
+    chunk_size = 500
+    chunk_overlap = 50
     documents = load_documents(source_directory)
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=chunk_overlap
