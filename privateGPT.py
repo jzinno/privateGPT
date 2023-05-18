@@ -3,7 +3,13 @@ from langchain.chains import RetrievalQA
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.vectorstores import Chroma
-from langchain.llms import GPT4All, LlamaCpp
+from langchain.llms import GPT4All, LlamaCpp, HuggingFacePipeline
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    pipeline,
+    AutoModelForSeq2SeqLM,
+)
 import os
 
 load_dotenv()
@@ -45,6 +51,8 @@ def main():
                 verbose=False,
                 n_threads=10,
             )
+        case "HuggingFace":
+            llm = create_HuggingFace_pipeline(model_path, model_n_ctx)
         case _default:
             print(f"Model {model_type} not supported!")
             exit
@@ -71,6 +79,25 @@ def main():
         for document in docs:
             print("\n> " + document.metadata["source"] + ":")
             print(document.page_content)
+
+
+def create_HuggingFace_pipeline(model_path, model_n_ctx):
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+            model_path, device_map="auto", local_files_only=True
+        )
+        pipe = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            max_length=int(model_n_ctx),
+            min_length=20,
+        )
+
+        return HuggingFacePipeline(pipeline=pipe)
+    except Exception as e:
+        print(e)
 
 
 if __name__ == "__main__":
