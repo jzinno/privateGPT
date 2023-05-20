@@ -4,6 +4,7 @@ from typing import List
 from dotenv import load_dotenv
 
 import multiprocessing
+from tqdm import tqdm
 
 from langchain.document_loaders import (
     CSVLoader,
@@ -49,7 +50,7 @@ load_dotenv()
 
 
 def load_single_document(file_path: str) -> Document:
-    print(f"Loading document from {file_path}")
+    # print(f"Loading document from {file_path}")
     ext = "." + file_path.rsplit(".", 1)[-1]
     if ext in LOADER_MAPPING:
         loader_class, loader_args = LOADER_MAPPING[ext]
@@ -66,15 +67,16 @@ def load_documents(source_dir: str) -> List[Document]:
         all_files.extend(
             glob.glob(os.path.join(source_dir, f"**/*{ext}"), recursive=True)
         )
-    with multiprocessing.Pool(
-        int(
-            os.environ.get(
-                "LOAD_DOCUMENTS_NUMBER_OF_THREADS", multiprocessing.cpu_count() - 1
-            )
-        )
-    ) as pool:
-        result = pool.map(load_single_document, all_files)
-    return result
+    with multiprocessing.Pool(processes=os.cpu_count() - 1) as pool:
+        results = []
+        with tqdm(total=len(all_files), desc="Loading documents", ncols=80) as pbar:
+            for i, doc in enumerate(
+                pool.imap_unordered(load_single_document, all_files)
+            ):
+                results.append(doc)
+                pbar.update()
+
+    return results
 
 
 def main():
@@ -85,8 +87,8 @@ def main():
 
     # Load documents and split in chunks
     print(f"Loading documents from {source_directory}")
-    chunk_size = 500
-    chunk_overlap = 50
+    chunk_size = 1000
+    chunk_overlap = 100
     documents = load_documents(source_directory)
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=chunk_overlap
@@ -99,6 +101,7 @@ def main():
     embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
 
     # Create and store locally vectorstore
+    print("Creating context embeddings and storing vectorstore")
     db = Chroma.from_documents(
         texts,
         embeddings,
