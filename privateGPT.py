@@ -41,6 +41,7 @@ def main():
                 n_ctx=model_n_ctx,
                 callbacks=callbacks,
                 verbose=False,
+                n_threads=10,
             )
         case "GPT4All":
             llm = GPT4All(
@@ -88,7 +89,7 @@ def create_HuggingFace_pipeline(model_path, model_n_ctx):
             model_path, device_map="auto", local_files_only=True
         )
         pipe = pipeline(
-            "text-generation",
+            "text2text-generation",
             model=model,
             tokenizer=tokenizer,
             max_length=int(model_n_ctx),
