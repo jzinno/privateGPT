@@ -14,5 +14,4 @@ transformers
 sentence_transformers
 accelerate
 pypandoc==1.11
-pypandoc==1.11
 tqdm==4.65.0
