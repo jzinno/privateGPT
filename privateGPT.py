@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
 from langchain.embeddings import HuggingFaceEmbeddings
@@ -11,6 +12,7 @@ from transformers import (
     AutoModelForSeq2SeqLM,
 )
 import os
+import argparse
 
 load_dotenv()
 
@@ -25,6 +27,8 @@ from constants import CHROMA_SETTINGS
 
 
 def main():
+    # Parse the command line arguments
+    args = parse_arguments()
     embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
     db = Chroma(
         persist_directory=persist_directory,
@@ -32,8 +36,9 @@ def main():
         client_settings=CHROMA_SETTINGS,
     )
     retriever = db.as_retriever()
+    # activate/deactivate the streaming StdOut callback for LLMs
+    callbacks = [] if args.mute_stream else [StreamingStdOutCallbackHandler()]
     # Prepare the LLM
-    callbacks = [StreamingStdOutCallbackHandler()]
     match model_type:
         case "LlamaCpp":
             llm = LlamaCpp(
@@ -58,7 +63,10 @@ def main():
             print(f"Model {model_type} not supported!")
             exit
     qa = RetrievalQA.from_chain_type(
-        llm=llm, chain_type="stuff", retriever=retriever, return_source_documents=True
+        llm=llm,
+        chain_type="stuff",
+        retriever=retriever,
+        return_source_documents=not args.hide_source,
     )
     # Interactive questions and answers
     while True:
@@ -68,7 +76,10 @@ def main():
 
         # Get the answer from the chain
         res = qa(query)
-        answer, docs = res["result"], res["source_documents"]
+        answer, docs = (
+            res["result"],
+            [] if args.hide_source else res["source_documents"],
+        )
 
         # Print the result
         print("\n\n> Question:")
@@ -99,6 +110,28 @@ def create_HuggingFace_pipeline(model_path, model_n_ctx):
         return HuggingFacePipeline(pipeline=pipe)
     except Exception as e:
         print(e)
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="privateGPT: Ask questions to your documents without an internet connection, "
+        "using the power of LLMs."
+    )
+    parser.add_argument(
+        "--hide-source",
+        "-S",
+        action="store_true",
+        help="Use this flag to disable printing of source documents used for answers.",
+    )
+
+    parser.add_argument(
+        "--mute-stream",
+        "-M",
+        action="store_true",
+        help="Use this flag to disable the streaming StdOut callback for LLMs.",
+    )
+
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
