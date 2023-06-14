@@ -5,6 +5,7 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.vectorstores import Chroma
 from langchain.llms import GPT4All, LlamaCpp, HuggingFacePipeline
+from langchain.chat_models import ChatOpenAI
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -22,6 +23,7 @@ persist_directory = os.environ.get("PERSIST_DIRECTORY")
 model_type = os.environ.get("MODEL_TYPE")
 model_path = os.environ.get("MODEL_PATH")
 model_n_ctx = os.environ.get("MODEL_N_CTX")
+target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
 
 from constants import CHROMA_SETTINGS
 
@@ -35,7 +37,7 @@ def main():
         embedding_function=embeddings,
         client_settings=CHROMA_SETTINGS,
     )
-    retriever = db.as_retriever()
+    retriever = db.as_retriever(search_kwargs={"k": target_source_chunks})
     # activate/deactivate the streaming StdOut callback for LLMs
     callbacks = [] if args.mute_stream else [StreamingStdOutCallbackHandler()]
     # Prepare the LLM
@@ -47,6 +49,9 @@ def main():
                 callbacks=callbacks,
                 verbose=False,
                 n_threads=10,
+                n_batch=512,
+                n_gpu_layers=20,
+                max_tokens=2048,
             )
         case "GPT4All":
             llm = GPT4All(
@@ -59,6 +64,16 @@ def main():
             )
         case "HuggingFace":
             llm = create_HuggingFace_pipeline(model_path, model_n_ctx)
+
+        case "OpenAI":
+            llm = ChatOpenAI(
+                model=model_path,
+                openai_api_key=os.environ.get("OPENAI_API_KEY"),
+                streaming=True,
+                callbacks=callbacks,
+                verbose=False,
+            )
+
         case _default:
             print(f"Model {model_type} not supported!")
             exit
